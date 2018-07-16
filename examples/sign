@@ -1,0 +1,265 @@
+'use strict';
+var crypto = require('crypto'),
+    secp256k1 = require('secp256k1');
+
+var OPS = {
+    "OP_PUSHDATA1": 76,
+    "OP_PUSHDATA2": 77,
+    "OP_PUSHDATA4": 78,
+    "OP_DUP": 118,
+    "OP_HASH160": 169,
+    "OP_EQUALVERIFY": 136,
+    "OP_CHECKSIG": 172
+};
+
+var signTransaction = function(transaction, publicKey, privateKey) {
+    var ripemd160Hash = ripemd160(sha256(publicKey));
+
+    var chunks = [];
+    chunks.push(uint8Buffer(OPS.OP_DUP));
+    chunks.push(uint8Buffer(OPS.OP_HASH160));
+    chunks.push(pushDataIntBuffer(ripemd160Hash.length));
+    chunks.push(ripemd160Hash);
+    chunks.push(uint8Buffer(OPS.OP_EQUALVERIFY));
+    chunks.push(uint8Buffer(OPS.OP_CHECKSIG));
+
+    transaction.vin[0].script = Buffer.concat(chunks);
+
+    var hashType = 0x01;  // SIGHASH_ALL
+    var hashForSignature = hash256(Buffer.concat([toBuffer(transaction), uint32Buffer(hashType)]));
+
+    console.log('hash for signature', hashForSignature.toString('hex'));
+
+    var signature = secp256k1.sign(hashForSignature, privateKey).signature;
+    var signatureDER = secp256k1.signatureExport(signature);
+
+    console.log('signature', signature.toString('hex'));
+    console.log('signature DER', signatureDER.toString('hex'));
+
+    var scriptSignature = Buffer.concat([signatureDER, uint8Buffer(hashType)]); // public key hash input
+
+    console.log('script signature', scriptSignature.toString('hex'));
+
+    var scriptSig = Buffer.concat([pushDataIntBuffer(scriptSignature.length), scriptSignature, pushDataIntBuffer(publicKey.length), publicKey]);
+
+    console.log('script sig', scriptSig.toString('hex'));
+
+    transaction.vin[0].script = scriptSig;
+
+    var signedTransaction = toBuffer(transaction);
+
+    console.log('signed hex string', signedTransaction.toString('hex'));
+};
+
+// hexstring: 0100000001a85d392dfbb9c0e3b91de2853d2ece6e42be30cbcd98319a6835b86ae0b08eea0100000000ffffffff0200000000000000003176a914c1fe3d898175f021f827fed320408adebc266a4288ac1673706b710700000008010000274701000000000000007500000000000000003176a91442ecb7a618d3fe7dd2c57d3a1d81a2433a4a4c7c88ac1673706b710700000008010000274762000000000000007500000000
+signTransaction({
+    "txid" : "aef20228d8b125e5cf37f860d5b885a8d9ed2bcc8edd096cff66f447921bba2a",
+    "version" : 1,
+    "locktime" : 0,
+    "vin" : [
+        {
+            "txid" : "e5dff45ada7d0a9be6e95a5ead12178df199079effabf1247850cc4c2f127e3c",
+            "vout" : 0,
+            "scriptSig" : {
+                "asm" : "",
+                "hex" : ""
+            },
+            "sequence" : 4294967295
+        }
+    ],
+    "vout" : [
+        {
+            "value" : 0.00000000,
+            "n" : 0,
+            "scriptPubKey" : {
+                "asm" : "OP_DUP OP_HASH160 4f885fdc96ed9e04e8fd75408e3a32fb34301ede OP_EQUALVERIFY OP_CHECKSIG 73706b718d1712ad5e5ae9e69b0a7dda5af4dfe50100000000000000 OP_DROP",
+                "hex" : "76a9144f885fdc96ed9e04e8fd75408e3a32fb34301ede88ac1c73706b718d1712ad5e5ae9e69b0a7dda5af4dfe5010000000000000075",
+                "reqSigs" : 1,
+                "type" : "pubkeyhash",
+                "addresses" : [
+                    "1BkTPeuUdi5N1okqwktzuACsAG6Bn4sG1EJ2mF"
+                ]
+            },
+            "assets" : [
+                {
+                    "name" : "AD",
+                    "issuetxid" : "e5dff45ada7d0a9be6e95a5ead12178df199079effabf1247850cc4c2f127e3c",
+                    "assetref" : "2269-267-57317",
+                    "qty" : 1.00000000,
+                    "raw" : 1,
+                    "type" : "transfer"
+                }
+            ],
+            "permissions" : [
+            ],
+            "items" : [
+            ]
+        },
+        {
+            "value" : 0.00000000,
+            "n" : 1,
+            "scriptPubKey" : {
+                "asm" : "OP_DUP OP_HASH160 bdcb506680dbefb103ff101c9770d1b4248c391c OP_EQUALVERIFY OP_CHECKSIG 73706b718d1712ad5e5ae9e69b0a7dda5af4dfe56300000000000000 OP_DROP",
+                "hex" : "76a914bdcb506680dbefb103ff101c9770d1b4248c391c88ac1c73706b718d1712ad5e5ae9e69b0a7dda5af4dfe5630000000000000075",
+                "reqSigs" : 1,
+                "type" : "pubkeyhash",
+                "addresses" : [
+                    "1SenweB4LkEBAXkRWRgA9peX1iykJZrNPVe7ax"
+                ]
+            },
+            "assets" : [
+                {
+                    "name" : "AD",
+                    "issuetxid" : "e5dff45ada7d0a9be6e95a5ead12178df199079effabf1247850cc4c2f127e3c",
+                    "assetref" : "2269-267-57317",
+                    "qty" : 99.00000000,
+                    "raw" : 99,
+                    "type" : "transfer"
+                }
+            ],
+            "permissions" : [
+            ],
+            "items" : [
+            ]
+        }
+    ],
+    "data" : [
+    ]
+}, Buffer.from('02514a3cf26dd847b2dac2b4a02e093a6ef7a3f930dc33c6760c3a92b00e71dae2', 'hex'), Buffer.from('bfd9f92d1c040160efd8f25bacc2823d4f8e3241efed856b1e8d521aacd88fb7', 'hex'));
+
+// result:
+// 0100000001a85d392dfbb9c0e3b91de2853d2ece6e42be30cbcd98319a6835b86ae0b08eea010000006b483045022100c424fe2e42e9223ca5ddbfa6dc7fe4964997d16aa53910924aeca0a2330c87e002207710aaeb20845f8d08b78295b05f5c90c3cb96025d893f8c53345d677a1def18012102fdcee0919d98a318fb34318ab6645420252eadf5cbfe09f5c4cc07d58f22c628ffffffff0200000000000000003176a914c1fe3d898175f021f827fed320408adebc266a4288ac1673706b710700000008010000274701000000000000007500000000000000003176a91442ecb7a618d3fe7dd2c57d3a1d81a2433a4a4c7c88ac1673706b710700000008010000274762000000000000007500000000
+// result RPC call:
+// 0100000001a85d392dfbb9c0e3b91de2853d2ece6e42be30cbcd98319a6835b86ae0b08eea010000006a473044022032e6bffb014c0929d1aa0fb2a0eeeb37858ffe9bc44697f9a51fce2b41cb5695022025d72a36fd104d4a8666f3248d06b7456d3acd98be08de913577a6e25ae539e5012102fdcee0919d98a318fb34318ab6645420252eadf5cbfe09f5c4cc07d58f22c628ffffffff0200000000000000003176a914c1fe3d898175f021f827fed320408adebc266a4288ac1673706b710700000008010000274701000000000000007500000000000000003176a91442ecb7a618d3fe7dd2c57d3a1d81a2433a4a4c7c88ac1673706b710700000008010000274762000000000000007500000000
+
+function toBuffer(transaction) {
+    var chunks = [];
+
+    chunks.push(uint32Buffer(transaction.version));
+    chunks.push(varIntBuffer(transaction.vin.length));
+
+    transaction.vin.forEach(function (txIn) {
+        var hash = [].reverse.call(new Buffer(txIn.txid, 'hex'));
+        chunks.push(hash);
+        chunks.push(uint32Buffer(txIn.vout)); // index
+
+        if (txIn.script != null) {
+            chunks.push(varIntBuffer(txIn.script.length));
+            chunks.push(txIn.script);
+        } else {
+            chunks.push(varIntBuffer(0));
+        }
+
+        chunks.push(uint32Buffer(txIn.sequence));
+    });
+
+    chunks.push(varIntBuffer(transaction.vout.length));
+    transaction.vout.forEach(function (txOut) {
+        chunks.push(uint64Buffer(txOut.value));
+
+        var script = Buffer.from(txOut.scriptPubKey.hex, 'hex');
+
+        chunks.push(varIntBuffer(script.length));
+        chunks.push(script);
+    });
+
+    chunks.push(uint32Buffer(transaction.locktime));
+
+    return Buffer.concat(chunks);
+}
+
+function pushDataIntBuffer(number) {
+    var chunks = [];
+
+    var pushDataSize = number < OPS.OP_PUSHDATA1 ? 1
+        : number < 0xff ? 2
+            : number < 0xffff ? 3
+                : 5;
+
+    if (pushDataSize === 1) {
+        chunks.push(uint8Buffer(number));
+    } else if (pushDataSize === 2) {
+        chunks.push(uint8Buffer(OPS.OP_PUSHDATA1));
+        chunks.push(uint8Buffer(number));
+    } else if (pushDataSize === 3) {
+        chunks.push(uint8Buffer(OPS.OP_PUSHDATA2));
+        chunks.push(uint16Buffer(number));
+    } else {
+        chunks.push(uint8Buffer(OPS.OP_PUSHDATA4));
+        chunks.push(uint32Buffer(number));
+    }
+
+    return Buffer.concat(chunks);
+}
+
+function varIntBuffer(number) {
+    var chunks = [];
+
+    var size = number < 253 ? 1
+        : number < 0x10000 ? 3
+            : number < 0x100000000 ? 5
+                : 9;
+
+    // 8 bit
+    if (size === 1) {
+        chunks.push(uint8Buffer(number));
+
+        // 16 bit
+    } else if (size === 3) {
+        chunks.push(uint8Buffer(253));
+        chunks.push(uint16Buffer(number));
+
+        // 32 bit
+    } else if (size === 5) {
+        chunks.push(uint8Buffer(254));
+        chunks.push(uint32Buffer(number));
+
+        // 64 bit
+    } else {
+        chunks.push(uint8Buffer(255));
+        chunks.push(uint64Buffer(number));
+    }
+
+    return Buffer.concat(chunks);
+}
+
+function uint8Buffer(number) {
+    var buffer = new Buffer(1);
+    buffer.writeUInt8(number, 0);
+
+    return buffer;
+}
+
+function uint16Buffer(number) {
+    var buffer = new Buffer(2);
+    buffer.writeUInt16LE(number, 0);
+
+    return buffer;
+}
+
+function uint32Buffer(number) {
+    var buffer = new Buffer(4);
+    buffer.writeUInt32LE(number, 0);
+
+    return buffer;
+}
+
+function uint64Buffer(number) {
+    var buffer = new Buffer(8);
+    buffer.writeInt32LE(number & -1, 0);
+    buffer.writeUInt32LE(Math.floor(number / 0x100000000), 4);
+
+    return buffer;
+}
+
+function hash256 (buffer) {
+    return sha256(sha256(buffer))
+}
+
+function ripemd160 (buffer) {
+    return crypto.createHash('rmd160').update(buffer).digest()
+}
+
+function sha256 (buffer) {
+    return crypto.createHash('sha256').update(buffer).digest()
+}

@@ -1,0 +1,16 @@
+<html>
+<head>
+    <script src="./multichain-address.js"></script>
+</head>
+<body>
+
+</body>
+
+<script type="text/javascript">
+    var address = multichain.address.generateNew("0050cb6e", "eddcdabf");
+
+    document.querySelector('body').innerHTML = '<h1>' + address.address + '</h1>';
+    document.querySelector('body').innerHTML += '<p><strong>WIF:</strong> ' + address.toWIF("0050cb6e", "eddcdabf") + '</p>'
+</script>
+
+</html>
